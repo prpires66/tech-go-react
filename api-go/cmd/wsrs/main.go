@@ -23,11 +23,11 @@ func main() {
 
 	pool, err := pgxpool.New(ctx, fmt.Sprintf(
 		"user=%s password=%s host=%s port=%s dbname=%s",
-		os.Getenv("WSRS_DATABASE_USER"),
-		os.Getenv("WSRS_DATABASE_PASSWORD"),
-		os.Getenv("WSRS_DATABASE_HOST"),
-		os.Getenv("WSRS_DATABASE_PORT"),
-		os.Getenv("WSRS_DATABASE_NAME"),
+		os.Getenv("DATABASE_USER"),
+		os.Getenv("DATABASE_PASSWORD"),
+		os.Getenv("DATABASE_HOST"),
+		os.Getenv("DATABASE_PORT"),
+		os.Getenv("DATABASE_NAME"),
 	))
 	if err != nil {
 		panic(err)
@@ -41,13 +41,28 @@ func main() {
 
 	handler := api.NewHandler(pgstore.New(pool))
 
+	apiServerHost := os.Getenv("API_SERVER_HOST")
+	if apiServerHost == "" {
+		apiServerHost = "localhost"
+	}
+
+	apiServerPort := os.Getenv("API_SERVER_PORT")
+	if apiServerPort == "" {
+		apiServerPort = "8080"
+	}
+
+	// Combina o host e a porta
+	serverAddr := apiServerHost + ":" + apiServerPort
+
 	go func() {
-		if err := http.ListenAndServe(":8080", handler); err != nil {
+		if err := http.ListenAndServe(serverAddr, handler); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				panic(err)
 			}
 		}
 	}()
+
+	fmt.Printf("API is running at http://%s\n", serverAddr)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
